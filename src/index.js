@@ -75,6 +75,9 @@ async function main() {
         case 'view':
             await viewTaskInteractive(args['--status'], args['--category']);
             break;
+        case 'search':
+            await searchTaskInteractive(commandArgs, args['--status'], args['--category']);
+            break;
         case 'help':
         default:
             showHelp();
@@ -92,6 +95,7 @@ function showHelp() {
     console.log(`  ${chalk.green('task-cli delete')}                       - Delete a task (Interactive)`);
     console.log(`  ${chalk.green('task-cli config')}                       - Configure settings (Interactive)`);
     console.log(`  ${chalk.green('task-cli view')}                         - View task details (Interactive)`);
+    console.log(`  ${chalk.green('task-cli search <term>')}                - Search tasks by content`);
     console.log(`  ${chalk.green('task-cli help')}                         - Show this help`);
     console.log();
 }
@@ -599,17 +603,91 @@ async function viewTaskInteractive(statusFilter, categoryFilter) {
 
     try {
         const content = fs.readFileSync(path.join(TASKS_DIR, selectedFile), 'utf8');
-        const parsed = matter(content);
-
-        if (!parsed.content || parsed.content.trim().length === 0) {
-            console.log(chalk.italic.gray('\n   (No description provided for this task)\n'));
-        } else {
-            console.log('\n' + chalk.dim('─'.repeat(50)) + '\n');
-            console.log(marked(parsed.content));
-            console.log(chalk.dim('─'.repeat(50)) + '\n');
-        }
-
+        renderTask(content);
     } catch (err) {
         console.error(chalk.red('Error viewing task:'), err);
+    }
+}
+
+async function searchTaskInteractive(args, statusFilter, categoryFilter) {
+    intro(chalk.inverse(' Search Tasks '));
+
+    let term = args[0];
+
+    if (!term) {
+        term = await text({
+            message: 'Enter search term:',
+            validate(value) {
+                if (value.length === 0) return 'Search term is required!';
+            },
+        });
+
+        if (isCancel(term)) {
+            cancel('Operation cancelled.');
+            process.exit(0);
+        }
+    }
+
+    const files = fs.readdirSync(TASKS_DIR).filter(file => file.endsWith('.md'));
+    const results = [];
+
+    const lowerTerm = term.toLowerCase();
+
+    files.forEach(file => {
+        const content = fs.readFileSync(path.join(TASKS_DIR, file), 'utf8');
+        if (content.toLowerCase().includes(lowerTerm)) {
+            const parsed = matter(content);
+
+            // Apply filtering
+            if (statusFilter && parsed.data.status !== statusFilter) {
+                return;
+            }
+            if (categoryFilter && (!parsed.data.category || !parsed.data.category.toLowerCase().includes(categoryFilter.toLowerCase()))) {
+                return;
+            }
+
+            let label = parsed.data.title || file;
+            if (parsed.data.category) {
+                label = `[${parsed.data.category}] ${label}`;
+            }
+            results.push({
+                value: file,
+                label: label
+            });
+        }
+    });
+
+    if (results.length === 0) {
+        console.log(chalk.yellow(`\nNo tasks found containing '${term}' with the specified filters.`));
+        process.exit(0);
+    }
+
+    const selectedFile = await select({
+        message: `Found in ${results.length} tasks. Select to view:`,
+        options: results,
+    });
+
+    if (isCancel(selectedFile)) {
+        cancel('Operation cancelled.');
+        process.exit(0);
+    }
+
+    try {
+        const content = fs.readFileSync(path.join(TASKS_DIR, selectedFile), 'utf8');
+        renderTask(content);
+    } catch (err) {
+        console.error(chalk.red('Error viewing task:'), err);
+    }
+}
+
+function renderTask(content) {
+    const parsed = matter(content);
+
+    if (!parsed.content || parsed.content.trim().length === 0) {
+        console.log(chalk.italic.gray('\n   (No description provided for this task)\n'));
+    } else {
+        console.log('\n' + chalk.dim('─'.repeat(50)) + '\n');
+        console.log(marked(parsed.content));
+        console.log(chalk.dim('─'.repeat(50)) + '\n');
     }
 }
