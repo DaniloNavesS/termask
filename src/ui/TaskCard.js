@@ -7,8 +7,8 @@ const TaskCard = ({ title, id, category }) => {
         <Box borderStyle="single" padding={1} flexDirection="column" marginBottom={1}>
             <Text bold>{title}</Text>
             {category && (
-                <Text color="blue" dimColor>
-                    Category: {category}
+                <Text color="cyan" dimColor>
+                    Category: [{category}]
                 </Text>
             )}
             <Box marginTop={1}>

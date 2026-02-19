@@ -13,6 +13,12 @@ const matter = require('gray-matter');
 const chalk = require('chalk');
 const { intro, text, select, isCancel, cancel, confirm, outro } = require('@clack/prompts');
 const arg = require('arg');
+const { marked } = require('marked');
+const TerminalRenderer = require('marked-terminal').default;
+
+marked.setOptions({
+    renderer: new TerminalRenderer()
+});
 
 // Import UI components after babel register
 const Dashboard = require('./ui/Dashboard');
@@ -58,10 +64,16 @@ async function main() {
             listTasks(args['--status'], args['--category']);
             break;
         case 'move':
-            await moveTaskInteractive();
+            await moveTaskInteractive(args['--status'], args['--category']);
             break;
         case 'delete':
-            await deleteTaskInteractive();
+            await deleteTaskInteractive(args['--status'], args['--category']);
+            break;
+        case 'config':
+            await configureInteractive();
+            break;
+        case 'view':
+            await viewTaskInteractive(args['--status'], args['--category']);
             break;
         case 'help':
         default:
@@ -74,10 +86,12 @@ function showHelp() {
     console.log(chalk.bold('\n🚀 CLI Task Manager\n'));
     console.log(`  ${chalk.green('task-cli new')}                          - Create a new task`);
     console.log(`  ${chalk.green('task-cli list')}                         - List all tasks (TUI)`);
-    console.log(`  ${chalk.green('task-cli list --status <id>')}           - Filter by status`);
-    console.log(`  ${chalk.green('task-cli list --category <name>')}       - Filter by category`);
+    console.log(`  ${chalk.green('task-cli list --status <id> (-s)')}      - Filter by status`);
+    console.log(`  ${chalk.green('task-cli list --category <name> (-c)')}  - Filter by category`);
     console.log(`  ${chalk.green('task-cli move')}                         - Move task status (Interactive)`);
     console.log(`  ${chalk.green('task-cli delete')}                       - Delete a task (Interactive)`);
+    console.log(`  ${chalk.green('task-cli config')}                       - Configure settings (Interactive)`);
+    console.log(`  ${chalk.green('task-cli view')}                         - View task details (Interactive)`);
     console.log(`  ${chalk.green('task-cli help')}                         - Show this help`);
     console.log();
 }
@@ -100,13 +114,28 @@ async function createNewTask() {
         process.exit(0);
     }
 
-    const category = await text({
-        message: 'What is the category? (optional)',
-        placeholder: 'e.g. work, personal, study',
-        initialValue: '',
+    const categoryOptions = (config.categories || ['work', 'personal', 'study']).map(c => ({
+        value: c,
+        label: c.charAt(0).toUpperCase() + c.slice(1)
+    }));
+
+    const category = await select({
+        message: 'What is the category?',
+        options: categoryOptions,
     });
 
     if (isCancel(category)) {
+        cancel('Operation cancelled.');
+        process.exit(0);
+    }
+
+    const description = await text({
+        message: 'Quick description (optional, press Enter to skip):',
+        placeholder: 'e.g. Remember to buy milk',
+        initialValue: '',
+    });
+
+    if (isCancel(description)) {
         cancel('Operation cancelled.');
         process.exit(0);
     }
@@ -145,11 +174,12 @@ async function createNewTask() {
     const template = `---
 id: ${Date.now()}
 title: ${title}
-category: ${category || ''}
+category: ${category}
 deadline: ${deadline || ''}
 status: ${status}
 ---
 
+${description}
 `;
 
     try {
@@ -278,7 +308,7 @@ function updateTask(id, newStatus) {
     }
 }
 
-async function moveTaskInteractive() {
+async function moveTaskInteractive(statusFilter, categoryFilter) {
     intro(chalk.inverse(' Move Task '));
 
     const files = fs.readdirSync(TASKS_DIR).filter(file => file.endsWith('.md'));
@@ -287,15 +317,30 @@ async function moveTaskInteractive() {
         process.exit(0);
     }
 
-    const tasks = files.map(file => {
+    let tasks = files.map(file => {
         const content = fs.readFileSync(path.join(TASKS_DIR, file), 'utf8');
         const parsed = matter(content);
         return {
             value: file,
             label: parsed.data.title || file,
-            id: parsed.data.id
+            id: parsed.data.id,
+            status: parsed.data.status,
+            category: parsed.data.category
         };
     });
+
+    // Apply filtering
+    if (statusFilter) {
+        tasks = tasks.filter(t => t.status === statusFilter);
+    }
+    if (categoryFilter) {
+        tasks = tasks.filter(t => t.category && t.category.toLowerCase().includes(categoryFilter.toLowerCase()));
+    }
+
+    if (tasks.length === 0) {
+        console.log(chalk.yellow(`\nNo tasks found matching your filters to move.`));
+        process.exit(0);
+    }
 
     const selectedFile = await select({
         message: 'Select a task to move:',
@@ -339,7 +384,7 @@ async function moveTaskInteractive() {
     }
 }
 
-async function deleteTaskInteractive() {
+async function deleteTaskInteractive(statusFilter, categoryFilter) {
     intro(chalk.inverse(' Delete Task '));
 
     const files = fs.readdirSync(TASKS_DIR).filter(file => file.endsWith('.md'));
@@ -348,14 +393,29 @@ async function deleteTaskInteractive() {
         process.exit(0);
     }
 
-    const tasks = files.map(file => {
+    let tasks = files.map(file => {
         const content = fs.readFileSync(path.join(TASKS_DIR, file), 'utf8');
         const parsed = matter(content);
         return {
             value: file,
-            label: parsed.data.title || file
+            label: parsed.data.title || file,
+            status: parsed.data.status,
+            category: parsed.data.category
         };
     });
+
+    // Apply filtering
+    if (statusFilter) {
+        tasks = tasks.filter(t => t.status === statusFilter);
+    }
+    if (categoryFilter) {
+        tasks = tasks.filter(t => t.category && t.category.toLowerCase().includes(categoryFilter.toLowerCase()));
+    }
+
+    if (tasks.length === 0) {
+        console.log(chalk.yellow(`\nNo tasks found matching your filters to delete.`));
+        process.exit(0);
+    }
 
     const selectedFile = await select({
         message: 'Select a task to delete:',
@@ -429,8 +489,127 @@ async function checkAndInitSetup() {
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2));
         outro('Ambiente configurado! Digite `task-cli help` para começar.');
         process.exit(0);
+
+
     } catch (err) {
         console.error(chalk.red('Error creating config file:'), err);
         process.exit(1);
+    }
+}
+
+async function configureInteractive() {
+    intro(chalk.inverse(' Configuration '));
+
+    const action = await select({
+        message: 'What do you want to configure?',
+        options: [
+            { value: 'add_category', label: 'Add new category' },
+            { value: 'exit', label: 'Exit' }
+        ],
+    });
+
+    if (isCancel(action) || action === 'exit') {
+        cancel('Exiting configuration.');
+        process.exit(0);
+    }
+
+    if (action === 'add_category') {
+        const newCategory = await text({
+            message: 'What is the name of the new category?',
+            validate(value) {
+                if (value.length === 0) return 'Category name is required!';
+            },
+        });
+
+        if (isCancel(newCategory)) {
+            cancel('Operation cancelled.');
+            process.exit(0);
+        }
+
+        const formattedCategory = newCategory.toLowerCase().trim();
+
+        try {
+            const currentConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+            if (!currentConfig.categories) {
+                currentConfig.categories = [];
+            }
+
+            if (currentConfig.categories.includes(formattedCategory)) {
+                console.log(chalk.yellow(`\nCategory '${formattedCategory}' already exists.`));
+                process.exit(0);
+            }
+
+            currentConfig.categories.push(formattedCategory);
+            fs.writeFileSync(CONFIG_FILE, JSON.stringify(currentConfig, null, 2));
+
+            console.log(chalk.green(`\nCategory '${formattedCategory}' added successfully!`));
+
+        } catch (err) {
+            console.error(chalk.red('Error updating configuration:'), err);
+        }
+    }
+}
+
+async function viewTaskInteractive(statusFilter, categoryFilter) {
+    intro(chalk.inverse(' View Task '));
+
+    const files = fs.readdirSync(TASKS_DIR).filter(file => file.endsWith('.md')).sort().reverse();
+    if (files.length === 0) {
+        cancel('No tasks found to view.');
+        process.exit(0);
+    }
+
+    let tasks = files.map(file => {
+        const content = fs.readFileSync(path.join(TASKS_DIR, file), 'utf8');
+        const parsed = matter(content);
+        let label = parsed.data.title || file;
+        if (parsed.data.category) {
+            label = `[${parsed.data.category}] ${label}`;
+        }
+        return {
+            value: file,
+            label: label,
+            status: parsed.data.status,
+            category: parsed.data.category
+        };
+    });
+
+    // Apply filtering
+    if (statusFilter) {
+        tasks = tasks.filter(t => t.status === statusFilter);
+    }
+    if (categoryFilter) {
+        tasks = tasks.filter(t => t.category && t.category.toLowerCase().includes(categoryFilter.toLowerCase()));
+    }
+
+    if (tasks.length === 0) {
+        console.log(chalk.yellow(`\nNo tasks found matching your filters.`));
+        process.exit(0);
+    }
+
+    const selectedFile = await select({
+        message: 'Select a task to view:',
+        options: tasks,
+    });
+
+    if (isCancel(selectedFile)) {
+        cancel('Operation cancelled.');
+        process.exit(0);
+    }
+
+    try {
+        const content = fs.readFileSync(path.join(TASKS_DIR, selectedFile), 'utf8');
+        const parsed = matter(content);
+
+        if (!parsed.content || parsed.content.trim().length === 0) {
+            console.log(chalk.italic.gray('\n   (No description provided for this task)\n'));
+        } else {
+            console.log('\n' + chalk.dim('─'.repeat(50)) + '\n');
+            console.log(marked(parsed.content));
+            console.log(chalk.dim('─'.repeat(50)) + '\n');
+        }
+
+    } catch (err) {
+        console.error(chalk.red('Error viewing task:'), err);
     }
 }

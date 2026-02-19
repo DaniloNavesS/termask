@@ -13,7 +13,7 @@ const Column = ({ title, color, tasks }) => {
             </Box>
             <Box flexDirection="column">
                 {tasks.map((task) => (
-                    <TaskCard key={task.id} title={task.title} id={task.id} />
+                    <TaskCard key={task.id} {...task} />
                 ))}
                 {tasks.length === 0 && (
                     <Text color="gray" italic>
