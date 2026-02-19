@@ -21,9 +21,11 @@ const showHelp = require('./cli/commands/help');
 const args = arg({
     '--status': String,
     '--category': String,
+    '--archived': Boolean,
     // Aliases
     '-s': '--status',
     '-c': '--category',
+    '-a': '--archived'
 }, {
     permissive: true
 });
@@ -34,12 +36,14 @@ const commandArgs = args._.slice(1);
 async function main() {
     await configService.checkAndInitSetup();
 
+    const includeArchived = args['--archived'] || false;
+
     switch (command) {
         case 'new':
             await createNewTask();
             break;
         case 'list':
-            listTasks(commandArgs, args['--status'], args['--category']);
+            listTasks(commandArgs, args['--status'], args['--category'], includeArchived);
             break;
         case 'move':
             await moveTaskInteractive(commandArgs, args['--status'], args['--category']);
@@ -51,10 +55,13 @@ async function main() {
             await configureInteractive();
             break;
         case 'view':
-            await viewTaskInteractive(commandArgs, args['--status'], args['--category']);
+            await viewTaskInteractive(commandArgs, args['--status'], args['--category'], includeArchived);
             break;
         case 'search':
-            await searchTaskInteractive(commandArgs, args['--status'], args['--category']);
+            await searchTaskInteractive(commandArgs, args['--status'], args['--category'], includeArchived);
+            break;
+        case 'clean-done':
+            await require('./cli/commands/clean-done')();
             break;
         case 'help':
         default:

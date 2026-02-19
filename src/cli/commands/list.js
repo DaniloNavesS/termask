@@ -5,21 +5,16 @@ const taskService = require('../../core/taskService');
 const configService = require('../../core/configService');
 const chalk = require('chalk');
 
-function listTasks(args, statusFilter, categoryFilter) {
+function listTasks(args, statusFilter, categoryFilter, includeArchived) {
     try {
         const query = args && args.length > 0 ? args[0] : null;
-        const tasks = taskService.getFilteredTasks(statusFilter, categoryFilter, query);
+        const tasks = taskService.getFilteredTasks(statusFilter, categoryFilter, query, includeArchived);
         const config = configService.loadConfig();
 
         if (tasks.length === 0 && query) {
             console.log(chalk.yellow(`\nNo tasks found matching query '${query}' and filters.`));
-            // Don't exit here, let TUI handle empty state or just show empty board?
-            // Since dashboard might not handle empty well or maybe it does.
-            // If we want consistent "grep" feel, maybe exit if no results?
-            // But list usually shows empty board. Let's let it render with empty tasks.
         }
 
-        // Dashboard expects tasks array with metadata
         render(React.createElement(Dashboard, { tasks, config, filterStatus: statusFilter }));
     } catch (err) {
         console.error(chalk.red('Error listing tasks:'), err);

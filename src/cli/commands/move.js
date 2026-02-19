@@ -4,24 +4,18 @@ const taskService = require('../../core/taskService');
 const taskRepository = require('../../data/taskRepository');
 const configService = require('../../core/configService');
 const matter = require('gray-matter');
+const i18n = require('../../utils/i18n');
 
 async function moveTaskInteractive(args, statusFilter, categoryFilter) {
-    intro(chalk.inverse(' Move Task '));
+    i18n.loadLanguage();
+    intro(chalk.inverse(i18n.t('moveTitle')));
 
     const query = args && args.length > 0 ? args[0] : null;
     const tasks = taskService.getFilteredTasks(statusFilter, categoryFilter, query);
 
     if (tasks.length === 0) {
-        if (taskRepository.getAllTasks().length > 0 && tasks.length === 0) {
-            const msg = query
-                ? `\nNo tasks found matching query '${query}' and filters to move.`
-                : `\nNo tasks found matching your filters to move.`;
-            console.log(chalk.yellow(msg));
-            process.exit(0);
-        } else {
-            cancel('No tasks found to move.');
-            process.exit(0);
-        }
+        console.log(chalk.yellow(i18n.t('viewNoTasks')));
+        process.exit(0);
     }
 
     const options = tasks.map(task => {
@@ -33,12 +27,12 @@ async function moveTaskInteractive(args, statusFilter, categoryFilter) {
     });
 
     const selectedFile = await select({
-        message: 'Select a task to move:',
+        message: i18n.t('moveSelectPrompt'),
         options: options,
     });
 
     if (isCancel(selectedFile)) {
-        cancel('Operation cancelled.');
+        cancel(i18n.t('opCancelled'));
         process.exit(0);
     }
 
@@ -49,12 +43,12 @@ async function moveTaskInteractive(args, statusFilter, categoryFilter) {
     }));
 
     const newStatus = await select({
-        message: 'Select new status:',
+        message: i18n.t('moveStatusPrompt'),
         options: statusOptions,
     });
 
     if (isCancel(newStatus)) {
-        cancel('Operation cancelled.');
+        cancel(i18n.t('opCancelled'));
         process.exit(0);
     }
 
@@ -72,9 +66,9 @@ async function moveTaskInteractive(args, statusFilter, categoryFilter) {
         const newContent = matter.stringify(task.content, newData);
         taskRepository.saveTask(selectedFile, newContent);
 
-        console.log(chalk.green(`\nTask moved successfully to '${newStatus}'`));
+        console.log(chalk.green(i18n.t('moveSuccess', { status: newStatus })));
     } catch (err) {
-        console.error(chalk.red('Error moving task:'), err);
+        console.error(chalk.red(i18n.t('errorGeneric')), err);
     }
 }
 

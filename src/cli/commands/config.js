@@ -1,33 +1,35 @@
 const { intro, select, isCancel, cancel, text } = require('@clack/prompts');
 const chalk = require('chalk');
 const configService = require('../../core/configService');
+const i18n = require('../../utils/i18n');
 
 async function configureInteractive() {
-    intro(chalk.inverse(' Configuration '));
+    i18n.loadLanguage();
+    intro(chalk.inverse(i18n.t('configTitle')));
 
     const action = await select({
-        message: 'What do you want to configure?',
+        message: i18n.t('configActionPrompt'),
         options: [
-            { value: 'add_category', label: 'Add new category' },
-            { value: 'exit', label: 'Exit' }
+            { value: 'add_category', label: i18n.t('configActionAddCat') },
+            { value: 'exit', label: i18n.t('configActionExit') }
         ],
     });
 
     if (isCancel(action) || action === 'exit') {
-        cancel('Exiting configuration.');
+        cancel(i18n.t('opCancelled'));
         process.exit(0);
     }
 
     if (action === 'add_category') {
         const newCategory = await text({
-            message: 'What is the name of the new category?',
+            message: i18n.t('configAddCatPrompt'),
             validate(value) {
-                if (value.length === 0) return 'Category name is required!';
+                if (value.length === 0) return i18n.t('valRequired');
             },
         });
 
         if (isCancel(newCategory)) {
-            cancel('Operation cancelled.');
+            cancel(i18n.t('opCancelled'));
             process.exit(0);
         }
 
@@ -40,17 +42,17 @@ async function configureInteractive() {
             }
 
             if (currentConfig.categories.includes(formattedCategory)) {
-                console.log(chalk.yellow(`\nCategory '${formattedCategory}' already exists.`));
+                console.log(chalk.yellow(i18n.t('configAddCatExists', { category: formattedCategory })));
                 process.exit(0);
             }
 
             currentConfig.categories.push(formattedCategory);
             configService.saveConfig(currentConfig);
 
-            console.log(chalk.green(`\nCategory '${formattedCategory}' added successfully!`));
+            console.log(chalk.green(i18n.t('configAddCatSuccess', { category: formattedCategory })));
 
         } catch (err) {
-            console.error(chalk.red('Error updating configuration:'), err);
+            console.error(chalk.red(i18n.t('errorGeneric')), err);
         }
     }
 }

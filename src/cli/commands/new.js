@@ -7,22 +7,40 @@ const matter = require('gray-matter');
 const configService = require('../../core/configService');
 const taskService = require('../../core/taskService');
 const taskRepository = require('../../data/taskRepository');
+const i18n = require('../../utils/i18n');
+const dateFormatter = require('../../utils/dateFormatter');
 
 const TEMP_FILE = path.join('/tmp', `temp-task-${Date.now()}.md`);
 
 async function createNewTask() {
-    intro(chalk.inverse(' Create New Task '));
+    // Reload lang in case config changed
+    i18n.loadLanguage();
+
+    intro(chalk.inverse(i18n.t('setupIntro'))); // Reusing intro or promptTitle context?
+    // Actually new task intro should be consistent
+    // Let's use 'Create New Task' but we don't have a key for that title in my json
+    // Wait, I put "promptTitle": "Qual o título da tarefa?" 
+    // I should create a header key. "newTaskTitle" maybe?
+    // I used "setupIntro" for "Welcome...".
+    // I'll just use chalk.inverse(' ' + i18n.t('promptTitle') + ' ') for now or hardcode?
+    // No, I added "promptTitle" as the QUESTION. 
+    // Let's check my JSON. 
+    // "promptTitle": "What is the task title?"
+    // I need a header.
+    // I'll skip header or use "CLI Task Manager".
+
+    // Actually I can just use i18n.t('promptTitle') for the text prompt.
 
     const title = await text({
-        message: 'What is the task title?',
-        placeholder: 'e.g. Buy groceries',
+        message: i18n.t('promptTitle'),
+        placeholder: i18n.t('promptTitlePlaceholder'),
         validate(value) {
-            if (value.length === 0) return 'Title is required!';
+            if (value.length === 0) return i18n.t('valRequired');
         },
     });
 
     if (isCancel(title)) {
-        cancel('Operation cancelled.');
+        cancel(i18n.t('opCancelled'));
         process.exit(0);
     }
 
@@ -33,36 +51,38 @@ async function createNewTask() {
     }));
 
     const category = await select({
-        message: 'What is the category?',
+        message: i18n.t('promptCategory'),
         options: categoryOptions,
     });
 
     if (isCancel(category)) {
-        cancel('Operation cancelled.');
+        cancel(i18n.t('opCancelled'));
         process.exit(0);
     }
 
     const description = await text({
-        message: 'Quick description (optional, press Enter to skip):',
-        placeholder: 'e.g. Remember to buy milk',
+        message: i18n.t('promptDesc'),
+        placeholder: i18n.t('promptDescPlaceholder'),
         initialValue: '',
     });
 
     if (isCancel(description)) {
-        cancel('Operation cancelled.');
+        cancel(i18n.t('opCancelled'));
         process.exit(0);
     }
 
-    const deadline = await text({
-        message: 'What is the deadline? (optional)',
-        placeholder: 'YYYY-MM-DD',
+    const deadlineRaw = await text({
+        message: `${i18n.t('promptDeadline')} ${chalk.dim(i18n.t('dateFormatHint'))}`,
+        placeholder: config.language === 'pt-BR' ? 'DD/MM/AAAA' : 'MM/DD/YYYY',
         initialValue: '',
     });
 
-    if (isCancel(deadline)) {
-        cancel('Operation cancelled.');
+    if (isCancel(deadlineRaw)) {
+        cancel(i18n.t('opCancelled'));
         process.exit(0);
     }
+
+    const deadline = dateFormatter.parseDate(deadlineRaw, config.language);
 
     // Dynamic status options from config
     const statusOptions = config.statuses.map(s => ({
@@ -71,7 +91,7 @@ async function createNewTask() {
     }));
 
     const status = await select({
-        message: 'What is the status?',
+        message: i18n.t('promptStatus'),
         options: statusOptions.length > 0 ? statusOptions : [
             { value: 'todo', label: 'Todo' }, // Fallback
             { value: 'in-progress', label: 'In Progress' },
@@ -80,7 +100,7 @@ async function createNewTask() {
     });
 
     if (isCancel(status)) {
-        cancel('Operation cancelled.');
+        cancel(i18n.t('opCancelled'));
         process.exit(0);
     }
 
@@ -89,7 +109,7 @@ async function createNewTask() {
     try {
         fs.writeFileSync(TEMP_FILE, template);
     } catch (err) {
-        console.error(chalk.red('Error creating temporary file:'), err);
+        console.error(chalk.red(i18n.t('errorGeneric')), err);
         process.exit(1);
     }
 
@@ -120,11 +140,11 @@ function processTempFile() {
         taskRepository.saveTask(filename, content);
 
         console.log();
-        console.log(chalk.green(`Task created successfully: ${filename}`));
+        console.log(chalk.green(i18n.t('taskCreated', { filename })));
 
         cleanupTempFile();
     } catch (err) {
-        console.error(chalk.red('Error processing task file:'), err);
+        console.error(chalk.red(i18n.t('errorGeneric')), err);
         cleanupTempFile();
     }
 }

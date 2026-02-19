@@ -1,8 +1,8 @@
 const viewTaskInteractive = require('./view');
 const { text, isCancel, cancel } = require('@clack/prompts');
 
-async function searchTaskInteractive(args, statusFilter, categoryFilter) {
-    // If no args (term), prompt for it to maintain search behavior
+async function searchTaskInteractive(args, statusFilter, categoryFilter, includeArchived) {
+    // If no args (term), prompt for it
     if (!args || args.length === 0) {
         const term = await text({
             message: 'Enter search term:',
@@ -20,7 +20,7 @@ async function searchTaskInteractive(args, statusFilter, categoryFilter) {
     }
 
     // Call view with the args
-    await viewTaskInteractive(args, statusFilter, categoryFilter);
+    await viewTaskInteractive(args, statusFilter, categoryFilter, includeArchived);
 }
 
 module.exports = searchTaskInteractive;
