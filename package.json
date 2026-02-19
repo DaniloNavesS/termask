@@ -1,0 +1,27 @@
+{
+  "name": "cli-task",
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": {
+    "task-cli": "./src/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@babel/preset-react": "^7.28.5",
+    "@babel/register": "^7.28.6",
+    "@clack/prompts": "^1.0.1",
+    "arg": "^5.0.2",
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.5",
+    "gray-matter": "^4.0.3",
+    "ink": "^3.2.0",
+    "prop-types": "^15.8.1",
+    "react": "^17.0.2"
+  }
+}
