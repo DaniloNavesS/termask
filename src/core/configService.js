@@ -8,14 +8,36 @@ const CONFIG_FILE = path.join(__dirname, '../../task-config.json');
 const TASKS_DIR = path.join(__dirname, '../../data/tasks');
 
 function loadConfig() {
+    let config = { statuses: [], categories: [] };
     if (fs.existsSync(CONFIG_FILE)) {
         try {
-            return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+            config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
         } catch (err) {
             console.error(chalk.red('Error loading config file:'), err);
         }
     }
-    return { statuses: [], categories: [] };
+
+    // Migration: Convert old string categories to objects
+    if (config.categories && config.categories.length > 0 && typeof config.categories[0] === 'string') {
+        config.categories = config.categories.map(cat => ({
+            id: cat,
+            label: cat.charAt(0).toUpperCase() + cat.slice(1),
+            color: 'gray'
+        }));
+        // Silently save the migrated config
+        saveConfig(config);
+    }
+
+    // Inject default priorities if missing (backward compatibility)
+    if (!config.priorities || config.priorities.length === 0) {
+        config.priorities = [
+            { id: "high", label: "↑ Alta", color: "red" },
+            { id: "medium", label: "≡ Média", "color": "yellow" },
+            { id: "low", label: "↓ Baixa", "color": "blue" }
+        ];
+    }
+
+    return config;
 }
 
 function saveConfig(config) {
@@ -83,7 +105,16 @@ async function checkAndInitSetup() {
             { "id": "in-progress", "label": i18n.t('statusInProgress'), "color": "yellow" },
             { "id": "done", "label": i18n.t('statusDone'), "color": "green" }
         ],
-        "categories": ["work", "personal", "study"]
+        "categories": [
+            { "id": "work", "label": i18n.t('categoryWork') || "Work", "color": "cyan" },
+            { "id": "personal", "label": i18n.t('categoryPersonal') || "Personal", "color": "magenta" },
+            { "id": "study", "label": i18n.t('categoryStudy') || "Study", "color": "blue" }
+        ],
+        "priorities": [
+            { "id": "high", "label": "↑ Alta", "color": "red" },
+            { "id": "medium", "label": "≡ Média", "color": "yellow" },
+            { "id": "low", "label": "↓ Baixa", "color": "blue" }
+        ]
     };
 
     try {

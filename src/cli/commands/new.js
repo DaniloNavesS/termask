@@ -45,9 +45,15 @@ async function createNewTask() {
     }
 
     const config = configService.loadConfig();
-    const categoryOptions = (config.categories || ['work', 'personal', 'study']).map(c => ({
-        value: c,
-        label: c.charAt(0).toUpperCase() + c.slice(1)
+    const defaultCategories = [
+        { id: 'work', label: 'Work' },
+        { id: 'personal', label: 'Personal' },
+        { id: 'study', label: 'Study' }
+    ];
+
+    const categoryOptions = (config.categories && config.categories.length > 0 ? config.categories : defaultCategories).map(c => ({
+        value: c.id,
+        label: c.label || (c.id.charAt(0).toUpperCase() + c.id.slice(1)) // Fallback se label não existir
     }));
 
     const category = await select({
@@ -67,6 +73,23 @@ async function createNewTask() {
     });
 
     if (isCancel(description)) {
+        cancel(i18n.t('opCancelled'));
+        process.exit(0);
+    }
+
+    const priorityOptions = (config.priorities || []).map(p => ({
+        value: p.id,
+        label: p.label
+    }));
+
+    const priority = await select({
+        message: config.language === 'pt-BR' ? 'Qual a prioridade?' : 'What is the priority?',
+        options: priorityOptions.length > 0 ? priorityOptions : [
+            { value: 'medium', label: 'Medium' }
+        ],
+    });
+
+    if (isCancel(priority)) {
         cancel(i18n.t('opCancelled'));
         process.exit(0);
     }
@@ -104,7 +127,7 @@ async function createNewTask() {
         process.exit(0);
     }
 
-    const template = taskService.buildFrontmatter(Date.now(), title, category, deadline, status, description);
+    const template = taskService.buildFrontmatter(Date.now(), title, category, priority, deadline, status, description);
 
     try {
         fs.writeFileSync(TEMP_FILE, template);

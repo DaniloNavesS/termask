@@ -1,31 +1,32 @@
 function parseDate(input, language) {
     if (!input) return '';
 
-    // Normalize separator
     const cleanInput = input.replace(/[\.\-]/g, '/');
     const parts = cleanInput.split('/');
 
-    if (parts.length !== 3) return input; // Return original if can't parse
+    if (parts.length !== 3) return input;
 
     let day, month, year;
 
     if (language === 'pt-BR') {
-        // DD/MM/YYYY
         day = parts[0];
         month = parts[1];
         year = parts[2];
     } else {
-        // MM/DD/YYYY (en-US default)
         month = parts[0];
         day = parts[1];
         year = parts[2];
     }
 
-    // Pad with zeros if needed
+    // Smart fallback if someone typed day where month goes (e.g > 12)
+    if (parseInt(month) > 12 && parseInt(day) <= 12) {
+        let temp = day;
+        day = month;
+        month = temp;
+    }
+
     day = day.padStart(2, '0');
     month = month.padStart(2, '0');
-
-    // Basic Validation could go here
 
     return `${year}-${month}-${day}`;
 }
@@ -37,7 +38,14 @@ function formatDate(isoDate, language) {
     const parts = isoDate.split('-');
     if (parts.length !== 3) return isoDate;
 
-    const [year, month, day] = parts;
+    let [year, month, day] = parts;
+
+    // Fix corrupted ISOs on the fly gracefully
+    if (parseInt(month) > 12 && parseInt(day) <= 12) {
+        let temp = day;
+        day = month;
+        month = temp;
+    }
 
     if (language === 'pt-BR') {
         return `${day}/${month}/${year}`;
@@ -46,7 +54,36 @@ function formatDate(isoDate, language) {
     }
 }
 
+function getDeadlineStatus(deadlineIsoString) {
+    if (!deadlineIsoString) return { color: 'gray', isFuture: true, isToday: false, isOverdue: false };
+
+    // deadlineIsoString is YYYY-MM-DD
+    const deadlineParts = deadlineIsoString.split('-');
+    if (deadlineParts.length !== 3) return { color: 'gray', isFuture: true, isToday: false, isOverdue: false };
+
+    const deadlineDate = new Date(
+        parseInt(deadlineParts[0]),
+        parseInt(deadlineParts[1]) - 1,
+        parseInt(deadlineParts[2])
+    );
+
+    const matchDate = new Date();
+    const todayDate = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
+
+    const diffTime = deadlineDate.getTime() - todayDate.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+        return { color: 'red', isOverdue: true, isToday: false, isFuture: false };
+    } else if (diffDays === 0) {
+        return { color: 'yellow', isToday: true, isOverdue: false, isFuture: false };
+    } else {
+        return { color: 'gray', isFuture: true, isToday: false, isOverdue: false };
+    }
+}
+
 module.exports = {
     parseDate,
-    formatDate
+    formatDate,
+    getDeadlineStatus
 };

@@ -16,11 +16,20 @@ async function deleteTaskInteractive(args, statusFilter, categoryFilter) {
         process.exit(0);
     }
 
+    const config = require('../../core/configService').loadConfig();
+
     const options = tasks.map(task => {
-        let label = task.title || task.filename;
+        let taskTitle = task.title || task.filename;
+        let catObj = config.categories ? config.categories.find(c => c.id === task.category) : null;
+        let catColorPath = catObj?.color || 'gray';
+        let catLabelColor = catObj?.label || (task.category ? task.category.charAt(0).toUpperCase() + task.category.slice(1) : 'Sem categoria');
+
+        let colorFunc = chalk[catColorPath] || chalk.gray;
+        let displayLabel = `${colorFunc(`[${catLabelColor}]`)} ${taskTitle}`;
+
         return {
             value: task.filename,
-            label: label,
+            label: displayLabel,
         };
     });
 

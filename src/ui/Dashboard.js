@@ -15,7 +15,7 @@ const Dashboard = ({ tasks, config, filterStatus }) => {
             <Box marginBottom={1}>
                 <Text bold>CLI Task Manager</Text>
             </Box>
-            <Box flexDirection="row" justifyContent="flex-start" gap={2}>
+            <Box flexDirection="row" justifyContent="flex-start" gap={3}>
                 {statuses.map((status) => {
                     // Filter tasks for this status
                     const statusTasks = tasks.filter((t) => t.status === status.id);
@@ -25,6 +25,8 @@ const Dashboard = ({ tasks, config, filterStatus }) => {
                             title={status.label}
                             color={status.color}
                             tasks={statusTasks}
+                            categories={config?.categories || []}
+                            priorities={config?.priorities || []}
                         />
                     );
                 })}

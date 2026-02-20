@@ -60,6 +60,9 @@ async function main() {
         case 'search':
             await searchTaskInteractive(commandArgs, args['--status'], args['--category'], includeArchived);
             break;
+        case 'cal':
+            await require('./cli/commands/cal')(commandArgs, args['--status'], args['--category'], includeArchived);
+            break;
         case 'clean-done':
             await require('./cli/commands/clean-done')();
             break;

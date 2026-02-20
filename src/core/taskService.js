@@ -44,11 +44,12 @@ function generateTaskSlug(title) {
         .replace(/\-\-+/g, '-');
 }
 
-function buildFrontmatter(id, title, category, deadline, status, description) {
+function buildFrontmatter(id, title, category, priority, deadline, status, description) {
     const data = {
         id: id || Date.now(),
         title: title,
         category: category,
+        priority: priority || 'medium',
         deadline: deadline || '',
         status: status
     };
@@ -61,8 +62,28 @@ function buildFrontmatter(id, title, category, deadline, status, description) {
     return matter.stringify(content, data);
 }
 
+function getTasksByDeadline(tasks) {
+    const tasksByDeadline = {};
+
+    tasks.forEach(task => {
+        if (!task.deadline) return;
+
+        // Pega apenas a string completa (ex: '2026-02-19') da ISO se existir timestamp associado
+        const deadlineDate = task.deadline.substring(0, 10);
+
+        if (!tasksByDeadline[deadlineDate]) {
+            tasksByDeadline[deadlineDate] = [];
+        }
+
+        tasksByDeadline[deadlineDate].push(task);
+    });
+
+    return tasksByDeadline;
+}
+
 module.exports = {
     getFilteredTasks,
     generateTaskSlug,
-    buildFrontmatter
+    buildFrontmatter,
+    getTasksByDeadline
 };

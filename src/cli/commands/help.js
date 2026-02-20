@@ -19,19 +19,21 @@ function showHelp() {
     // I'll just update the title key for now to demonstrate.
 
     console.log(chalk.bold(i18n.t('helpTitle')));
-    console.log(`  ${chalk.green('task-cli new')}                          - Create a new task`);
-    console.log(`  ${chalk.green('task-cli list [term]')}                  - List tasks (optional search term)`);
-    console.log(`  ${chalk.green('task-cli list --status <id> (-s)')}      - Filter by status`);
-    console.log(`  ${chalk.green('task-cli list --category <name> (-c)')}  - Filter by category`);
-    console.log(`  ${chalk.green('task-cli list --archived (-a)')}         - Include archived tasks`);
-    console.log(`  ${chalk.green('task-cli move [term]')}                  - Move task status (optional search)`);
-    console.log(`  ${chalk.green('task-cli delete [term]')}                - Delete a task (optional search)`);
-    console.log(`  ${chalk.green('task-cli clean-done')}                   - Archive or delete completed tasks`);
-    console.log(`  ${chalk.green('task-cli view [term]')}                  - View task details (optional search)`);
-    console.log(`  ${chalk.green('task-cli search <term>')}                - Search tasks by content (Alias to view)`);
-    console.log(`  ${chalk.green('task-cli config')}                       - Configure settings (Interactive)`);
-    console.log(`  ${chalk.green('task-cli help')}                         - Show this help`);
-    console.log();
+    console.log(`
+  ${i18n.t('helpUsage')} task-cli <command> [options]
+
+  ${i18n.t('helpCommands')}
+    new         ${i18n.t('helpNew')}
+    list        ${i18n.t('helpList')}
+    cal         Visualiza o calendário mensal com os prazos das tarefas.
+    move        ${i18n.t('helpMove')}
+    delete      ${i18n.t('helpDelete')}
+    clean-done  ${i18n.t('helpCleanDone')}
+    view        ${i18n.t('helpView')}
+    search      ${i18n.t('helpSearch')}
+    config      ${i18n.t('helpConfig')}
+    help        ${i18n.t('helpHelp')}
+`);
 }
 
 module.exports = showHelp;
